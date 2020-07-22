@@ -108,3 +108,5 @@ The following instructions are for project administrators.
         ./gradlew bintrayUpload -Prelease
 
 4. Log in to JCenter, hit the button to publish the release, then select the Maven tab and enter your credentials to Sync to Maven
+
+-- This version is maintained by the Titan HST development team
