@@ -3,7 +3,7 @@ apply from: '../gradle/version.gradle'
 apply plugin: "com.vanniktech.android.javadoc"
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 29
     buildToolsVersion '28.0.3'
 
     defaultConfig {
@@ -11,8 +11,8 @@ android {
         // requires minSdkVersion 14, forcing a bump verson minSdkVersion 7
         // But since only 0.8% of Android devices have < SDK 14 as of Une 2017, this will become
         // the new min version for this library in order to target Android O
-        minSdkVersion 14
-        targetSdkVersion 28
+        minSdkVersion 21
+        targetSdkVersion 29
         versionCode 1
         versionName version
         consumerProguardFiles 'proguard-rules.pro'

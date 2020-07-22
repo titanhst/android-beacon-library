@@ -216,6 +216,8 @@ class ScanHelper {
         } catch (RuntimeException e) {
             // Needed to stop a crash caused by internal Android throw.  See issue #701
             LogManager.e(TAG, "Unexpected runtime exception starting Android O background scanner", e);
+        } catch (Exception e) {
+            LogManager.e(TAG, "Unexpected unknown exception starting background scanner", e);
         }
     }
 
@@ -243,6 +245,8 @@ class ScanHelper {
         } catch (RuntimeException e) {
             // Needed to stop a crash caused by internal Android throw.  See issue #701
             LogManager.e(TAG, "Unexpected runtime exception stopping Android O background scanner", e);
+        } catch (Exception e) {
+            LogManager.e(TAG, "Unexpected unknown exception stopping background scanner", e);
         }
     }
 

@@ -1172,15 +1172,6 @@ public class BeaconManager {
         }
     }
 
-    /**
-     * Set the period of time, in which a beacon did not receive new
-     * measurements
-     * @param maxTrackingAge in milliseconds
-     */
-    public void setMaxTrackingAge(int maxTrackingAge) {
-        RangedBeacon.setMaxTrackinAge(maxTrackingAge);
-    }
-
     public static void setBeaconSimulator(BeaconSimulator beaconSimulator) {
         warnIfScannerNotInSameProcess();
         BeaconManager.beaconSimulator = beaconSimulator;

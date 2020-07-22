@@ -645,9 +645,8 @@ public class BeaconParser implements Serializable {
             beacon.mManufacturer = manufacturer;
             beacon.mParserIdentifier = mIdentifier;
             beacon.mMultiFrameBeacon = extraParsers.size() > 0 || mExtraFrame;
-            beacon.mFirstCycleDetectionTimestamp = timestampMs;
-            beacon.mLastCycleDetectionTimestamp = timestampMs;
             beacon.mTxPower = txPower;
+
             return beacon;
         }
         else {

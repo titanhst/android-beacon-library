@@ -515,8 +515,7 @@ public abstract class CycledLeScanner {
         if (mCancelAlarmOnUserSwitchBroadcastReceiver != null) {
             try {
                 mContext.unregisterReceiver(mCancelAlarmOnUserSwitchBroadcastReceiver);
-            }
-            catch (IllegalArgumentException e) {} // thrown if OS does not think it was registered
+            } catch (Exception e) {} // thrown if OS does not think it was registered
             mCancelAlarmOnUserSwitchBroadcastReceiver = null;
         }
     }

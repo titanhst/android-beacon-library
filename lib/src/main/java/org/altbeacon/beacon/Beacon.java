@@ -30,6 +30,7 @@ import org.altbeacon.beacon.client.BeaconDataFactory;
 import org.altbeacon.beacon.client.NullBeaconDataFactory;
 import org.altbeacon.beacon.distance.DistanceCalculator;
 import org.altbeacon.beacon.logging.LogManager;
+import org.altbeacon.beacon.service.Measurement;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -38,24 +39,29 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * The <code>Beacon</code> class represents a single hardware Beacon detected by
- * an Android device.
+ * Radius Networks, Inc.
+ * http://www.radiusnetworks.com
  *
- * <pre>A Beacon is identified by a unique multi-part identifier, with the first of the ordered
- * identifiers being more significant for the purposes of grouping beacons.
- *
- * A Beacon sends a Bluetooth Low Energy (BLE) advertisement that contains these
- * three identifiers, along with the calibrated tx power (in RSSI) of the
- * Beacon's Bluetooth transmitter.
- *
- * This class may only be instantiated from a BLE packet, and an RSSI measurement for
- * the packet.  The class parses out the identifier, along with the calibrated
- * tx power.  It then uses the measured RSSI and calibrated tx power to do a rough
- * distance measurement (the mDistance field)
- *
- * @author  David G. Young
- * @see     Region#matchesBeacon(Beacon Beacon)
+ * @author David G. Young
+ * <p>
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 public class Beacon implements Parcelable, Serializable {
     private static final String TAG = "Beacon";
 
@@ -69,8 +75,6 @@ public class Beacon implements Parcelable, Serializable {
      * to be configured equal.
      */
     protected static boolean sHardwareEqualityEnforced = false;
-
-    protected static DistanceCalculator sDistanceCalculator = null;
 
     /**
      * The a list of the multi-part identifiers of the beacon.  Together, these identifiers signify
@@ -92,14 +96,11 @@ public class Beacon implements Parcelable, Serializable {
     protected List<Long> mExtraDataFields;
 
     /**
-     * A double that is an estimate of how far the Beacon is away in meters.   Note that this number
-     * fluctuates quite a bit with RSSI, so despite the name, it is not super accurate.
-     */
-    protected Double mDistance;
-    /**
      * The measured signal strength of the Bluetooth packet that led do this Beacon detection.
      */
     protected int mRssi;
+
+    protected List<Measurement> rssiMeasurementList = new ArrayList<>();
     /**
      * The calibrated measured Tx power of the Beacon in RSSI
      * This value is baked into an Beacon when it is manufactured, and
@@ -130,7 +131,7 @@ public class Beacon implements Parcelable, Serializable {
     /**
      * Used to attach data to individual Beacons, either locally or in the cloud
      */
-    protected static BeaconDataFactory beaconDataFactory = new NullBeaconDataFactory();
+    // protected static BeaconDataFactory beaconDataFactory = new NullBeaconDataFactory();
 
     /**
      * The two byte value indicating the type of beacon that this is, which is used for figuring
@@ -177,16 +178,6 @@ public class Beacon implements Parcelable, Serializable {
     protected boolean mMultiFrameBeacon = false;
 
     /**
-     * The timestamp of the first packet detected in milliseconds.
-     */
-    protected long mFirstCycleDetectionTimestamp = 0L;
-
-    /**
-     * The timestamp of the last packet detected in milliseconds.
-     */
-    protected long mLastCycleDetectionTimestamp = 0L;
-
-    /**
      * Required for making object Parcelable.  If you override this class, you must provide an
      * equivalent version of this method.
      */
@@ -201,21 +192,6 @@ public class Beacon implements Parcelable, Serializable {
             return new Beacon[size];
         }
     };
-
-    /**
-     * Sets the DistanceCalculator to use with this beacon
-     * @param dc
-     */
-    public static void setDistanceCalculator(DistanceCalculator dc) {
-        sDistanceCalculator = dc;
-    }
-
-    /**
-     * Gets the DistanceCalculator to use with this beacon
-     */
-    public static DistanceCalculator getDistanceCalculator() {
-        return sDistanceCalculator;
-    }
 
     /**
      * Configures whether a the bluetoothAddress (mac address) must be the same for two Beacons
@@ -240,23 +216,22 @@ public class Beacon implements Parcelable, Serializable {
     protected Beacon(Parcel in) {
         int size = in.readInt();
 
-        this.mIdentifiers = new ArrayList<Identifier>(size);
+        this.mIdentifiers = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             mIdentifiers.add(Identifier.parse(in.readString()));
         }
-        mDistance = in.readDouble();
         mRssi = in.readInt();
         mTxPower = in.readInt();
         mBluetoothAddress = in.readString();
         mBeaconTypeCode = in.readInt();
         mServiceUuid = in.readInt();
         int dataSize = in.readInt();
-        this.mDataFields = new ArrayList<Long>(dataSize);
+        this.mDataFields = new ArrayList<>(dataSize);
         for (int i = 0; i < dataSize; i++) {
             mDataFields.add(in.readLong());
         }
         int extraDataSize = in.readInt();
-        this.mExtraDataFields = new ArrayList<Long>(extraDataSize);
+        this.mExtraDataFields = new ArrayList<>(extraDataSize);
         for (int i = 0; i < extraDataSize; i++) {
             mExtraDataFields.add(in.readLong());
         }
@@ -264,11 +239,10 @@ public class Beacon implements Parcelable, Serializable {
         mBluetoothName = in.readString();
         mParserIdentifier = in.readString();
         mMultiFrameBeacon = in.readByte() != 0;
-        mRunningAverageRssi = (Double) in.readValue(null);
+        mRunningAverageRssi = (Double) in.readValue(getClass().getClassLoader());
+        in.readTypedList(rssiMeasurementList, Measurement.CREATOR);
         mRssiMeasurementCount = in.readInt();
         mPacketCount = in.readInt();
-        mFirstCycleDetectionTimestamp = in.readLong();
-        mLastCycleDetectionTimestamp = in.readLong();
     }
 
     /**
@@ -280,7 +254,7 @@ public class Beacon implements Parcelable, Serializable {
         mIdentifiers = new ArrayList<>(otherBeacon.mIdentifiers);
         mDataFields = new ArrayList<>(otherBeacon.mDataFields);
         mExtraDataFields = new ArrayList<>(otherBeacon.mExtraDataFields);
-        this.mDistance = otherBeacon.mDistance;
+        rssiMeasurementList = new ArrayList<>(otherBeacon.rssiMeasurementList);
         this.mRunningAverageRssi = otherBeacon.mRunningAverageRssi;
         this.mPacketCount = otherBeacon.mPacketCount;
         this.mRssiMeasurementCount = otherBeacon.mRssiMeasurementCount;
@@ -293,17 +267,15 @@ public class Beacon implements Parcelable, Serializable {
         this.mParserIdentifier = otherBeacon.mParserIdentifier;
         this.mMultiFrameBeacon = otherBeacon.mMultiFrameBeacon;
         this.mManufacturer = otherBeacon.mManufacturer;
-        this.mFirstCycleDetectionTimestamp = otherBeacon.mFirstCycleDetectionTimestamp;
-        this.mLastCycleDetectionTimestamp = otherBeacon.mLastCycleDetectionTimestamp;
     }
 
     /**
      * Basic constructor that simply allocates fields
      */
     protected Beacon() {
-        mIdentifiers = new ArrayList<Identifier>(1);
-        mDataFields = new ArrayList<Long>(1);
-        mExtraDataFields = new ArrayList<Long>(1);
+        mIdentifiers = new ArrayList<>(1);
+        mDataFields = new ArrayList<>(1);
+        mExtraDataFields = new ArrayList<>(1);
     }
 
 
@@ -315,12 +287,12 @@ public class Beacon implements Parcelable, Serializable {
         mRssiMeasurementCount = rssiMeasurementCount;
     }
 
-    /**
-     * Returns the number of packet detections in the last ranging cycle
-     */
-    public int getPacketCount() {
-        return mPacketCount;
-    }
+//    /**
+//     * Returns the number of packet detections in the last ranging cycle
+//     */
+//    public int getPacketCount() {
+//        return mPacketCount;
+//    }
 
     /**
      * Sets the packet detections in the last ranging cycle
@@ -328,38 +300,6 @@ public class Beacon implements Parcelable, Serializable {
      */
     public void setPacketCount(int packetCount) {
         mPacketCount = packetCount;
-    }
-
-    /**
-     * Returns the timestamp of the first packet detected
-     */
-    public long getFirstCycleDetectionTimestamp() {
-        return mFirstCycleDetectionTimestamp;
-    }
-
-    /**
-     * Sets the timestamp of the first packet detected
-     *
-     * @param firstCycleDetectionTimestamp
-     */
-    public void setFirstCycleDetectionTimestamp(long firstCycleDetectionTimestamp) {
-        mFirstCycleDetectionTimestamp = firstCycleDetectionTimestamp;
-    }
-
-    /**
-     * Returns the timestamp of the last packet detected
-     */
-    public long getLastCycleDetectionTimestamp() {
-        return mLastCycleDetectionTimestamp;
-    }
-
-    /**
-     * Sets the timestamp of the last packet detected
-     *
-     * @param lastCycleDetectionTimestamp
-     */
-    public void setLastCycleDetectionTimestamp(long lastCycleDetectionTimestamp) {
-        mLastCycleDetectionTimestamp = lastCycleDetectionTimestamp;
     }
 
     /**
@@ -376,12 +316,11 @@ public class Beacon implements Parcelable, Serializable {
      */
     public void setRunningAverageRssi(double rssi) {
         mRunningAverageRssi = rssi;
-        mDistance = null; // force calculation of accuracy and proximity next time they are requested
     }
 
     /**
      * @deprecated To be removed in a future release. Use
-     * {@link org.altbeacon.beacon.Beacon#getRunningAverageRssi()}
+     * { org.altbeacon.beacon.Beacon#getRunningAverageRssi()}
      * instead.
      */
     @Deprecated
@@ -394,7 +333,7 @@ public class Beacon implements Parcelable, Serializable {
      * @return double
      */
     public double getRunningAverageRssi() {
-        if (mRunningAverageRssi != null){
+        if (mRunningAverageRssi != null) {
             return mRunningAverageRssi;
         }
         return mRssi;
@@ -450,6 +389,10 @@ public class Beacon implements Parcelable, Serializable {
         return mIdentifiers.get(1);
     }
 
+    public String getParsedId2() {
+        return getId2().toString().replaceFirst("0x", "");
+    }
+
     /**
      * Convenience method to get the third identifier
      * @return
@@ -465,8 +408,7 @@ public class Beacon implements Parcelable, Serializable {
     public List<Long> getDataFields() {
         if (mDataFields.getClass().isInstance(UNMODIFIABLE_LIST_OF_LONG)) {
             return mDataFields;
-        }
-        else {
+        } else {
             return Collections.unmodifiableList(mDataFields);
         }
     }
@@ -478,8 +420,7 @@ public class Beacon implements Parcelable, Serializable {
     public List<Long> getExtraDataFields() {
         if (mExtraDataFields.getClass().isInstance(UNMODIFIABLE_LIST_OF_LONG)) {
             return mExtraDataFields;
-        }
-        else {
+        } else {
             return Collections.unmodifiableList(mExtraDataFields);
         }
     }
@@ -499,34 +440,11 @@ public class Beacon implements Parcelable, Serializable {
     public List<Identifier> getIdentifiers() {
         if (mIdentifiers.getClass().isInstance(UNMODIFIABLE_LIST_OF_IDENTIFIER)) {
             return mIdentifiers;
-        }
-        else {
+        } else {
             return Collections.unmodifiableList(mIdentifiers);
         }
     }
 
-
-    /**
-     * Provides a calculated estimate of the distance to the beacon based on a running average of
-     * the RSSI and the transmitted power calibration value included in the beacon advertisement.
-     * This value is specific to the type of Android device receiving the transmission.
-     *
-     * @see #mDistance
-     * @return distance
-     */
-    public double getDistance() {
-        if (mDistance == null) {
-            double bestRssiAvailable = mRssi;
-            if (mRunningAverageRssi != null) {
-                bestRssiAvailable = mRunningAverageRssi;
-            }
-            else {
-                LogManager.d(TAG, "Not using running average RSSI because it is null");
-            }
-            mDistance = calculateDistance(mTxPower, bestRssiAvailable);
-        }
-        return mDistance;
-    }
     /**
      * @see #mRssi
      * @return mRssi
@@ -534,6 +452,11 @@ public class Beacon implements Parcelable, Serializable {
     public int getRssi() {
         return mRssi;
     }
+
+    public List<Measurement> getRssiMeasurementList() {
+        return rssiMeasurementList;
+    }
+
     /**
      * @see #mTxPower
      * @return txPowwer
@@ -546,7 +469,9 @@ public class Beacon implements Parcelable, Serializable {
      * @see #mBeaconTypeCode
      * @return beaconTypeCode
      */
-    public int getBeaconTypeCode() { return mBeaconTypeCode; }
+    public int getBeaconTypeCode() {
+        return mBeaconTypeCode;
+    }
 
     /**
      * @see #mBluetoothAddress
@@ -568,13 +493,17 @@ public class Beacon implements Parcelable, Serializable {
      * @see #mParserIdentifier
      * @return mParserIdentifier
      */
-    public String getParserIdentifier() { return mParserIdentifier; }
+    public String getParserIdentifier() {
+        return mParserIdentifier;
+    }
 
     /**
      * @see #mMultiFrameBeacon
      * @return mMultiFrameBeacon
      */
-    public boolean isMultiFrameBeacon() { return mMultiFrameBeacon; }
+    public boolean isMultiFrameBeacon() {
+        return mMultiFrameBeacon;
+    }
 
     /**
      * Calculate a hashCode for this beacon
@@ -607,17 +536,8 @@ public class Beacon implements Parcelable, Serializable {
     }
 
     /**
-     * Requests server-side data for this beacon.  Requires that a BeaconDataFactory be set up with
-     * a backend service.
-     * @param notifier interface providing a callback when data are available
-     */
-    public void requestData(BeaconDataNotifier notifier) {
-        beaconDataFactory.requestBeaconData(this, notifier);
-    }
-
-    /**
      * Formats a beacon as a string showing only its unique identifiers
-     * @return
+     * @return String
      */
     @Override
     public String toString() {
@@ -627,7 +547,7 @@ public class Beacon implements Parcelable, Serializable {
     private StringBuilder toStringBuilder() {
         final StringBuilder sb = new StringBuilder();
         int i = 1;
-        for (Identifier identifier: mIdentifiers) {
+        for (Identifier identifier : mIdentifiers) {
             if (i > 1) {
                 sb.append(" ");
             }
@@ -638,7 +558,7 @@ public class Beacon implements Parcelable, Serializable {
             i++;
         }
         if (mParserIdentifier != null) {
-            sb.append(" type "+mParserIdentifier);
+            sb.append(" type " + mParserIdentifier);
         }
         return sb;
     }
@@ -658,32 +578,30 @@ public class Beacon implements Parcelable, Serializable {
     @Deprecated
     public void writeToParcel(Parcel out, int flags) {
         out.writeInt(mIdentifiers.size());
-        for (Identifier identifier: mIdentifiers) {
+        for (Identifier identifier : mIdentifiers) {
             out.writeString(identifier == null ? null : identifier.toString());
         }
-        out.writeDouble(getDistance());
         out.writeInt(mRssi);
         out.writeInt(mTxPower);
         out.writeString(mBluetoothAddress);
         out.writeInt(mBeaconTypeCode);
         out.writeInt(mServiceUuid);
         out.writeInt(mDataFields.size());
-        for (Long dataField: mDataFields) {
+        for (Long dataField : mDataFields) {
             out.writeLong(dataField);
         }
         out.writeInt(mExtraDataFields.size());
-        for (Long dataField: mExtraDataFields) {
+        for (Long dataField : mExtraDataFields) {
             out.writeLong(dataField);
         }
         out.writeInt(mManufacturer);
         out.writeString(mBluetoothName);
         out.writeString(mParserIdentifier);
-        out.writeByte((byte) (mMultiFrameBeacon ? 1: 0));
+        out.writeByte((byte) (mMultiFrameBeacon ? 1 : 0));
         out.writeValue(mRunningAverageRssi);
+        out.writeTypedList(rssiMeasurementList);
         out.writeInt(mRssiMeasurementCount);
         out.writeInt(mPacketCount);
-        out.writeLong(mFirstCycleDetectionTimestamp);
-        out.writeLong(mLastCycleDetectionTimestamp);
     }
 
     /**
@@ -693,25 +611,6 @@ public class Beacon implements Parcelable, Serializable {
      */
     public boolean isExtraBeaconData() {
         return mIdentifiers.size() == 0 && mDataFields.size() != 0;
-    }
-
-    /**
-     * Estimate the distance to the beacon using the DistanceCalculator set on this class.  If no
-     * DistanceCalculator has been set, return -1 as the distance.
-     * @see org.altbeacon.beacon.distance.DistanceCalculator
-     *
-     * @param txPower
-     * @param bestRssiAvailable
-     * @return
-     */
-    protected static Double calculateDistance(int txPower, double bestRssiAvailable) {
-        if (Beacon.getDistanceCalculator() != null) {
-            return Beacon.getDistanceCalculator().calculateDistance(txPower, bestRssiAvailable);
-        }
-        else {
-            LogManager.e(TAG, "Distance calculator not set.  Distance will bet set to -1");
-            return -1.0;
-        }
     }
 
     /**
@@ -744,11 +643,11 @@ public class Beacon implements Parcelable, Serializable {
          * @return beacon
          */
         public Beacon build() {
-            if (mId1!= null) {
+            if (mId1 != null) {
                 mBeacon.mIdentifiers.add(mId1);
-                if (mId2!= null) {
+                if (mId2 != null) {
                     mBeacon.mIdentifiers.add(mId2);
-                    if (mId3!= null) {
+                    if (mId3 != null) {
                         mBeacon.mIdentifiers.add(mId3);
                     }
                 }
@@ -780,7 +679,7 @@ public class Beacon implements Parcelable, Serializable {
          * @param identifiers identifiers to set
          * @return builder
          */
-        public Builder setIdentifiers(List<Identifier>identifiers) {
+        public Builder setIdentifiers(List<Identifier> identifiers) {
             mId1 = null;
             mId2 = null;
             mId3 = null;
@@ -934,13 +833,13 @@ public class Beacon implements Parcelable, Serializable {
 
         /**
          * @see Beacon#mMultiFrameBeacon
-         * @param multiFrameBeacon
-         * @return builder
+         * @return multiFrameBeacon
          */
         public Builder setMultiFrameBeacon(boolean multiFrameBeacon) {
             mBeacon.mMultiFrameBeacon = multiFrameBeacon;
             return this;
         }
+
     }
 
 }

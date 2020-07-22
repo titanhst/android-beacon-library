@@ -229,7 +229,8 @@ public class BluetoothMedic {
                     try {
                         scanner.stopScan(this);
                     }
-                    catch (IllegalStateException e) { /* do nothing */ } // caught if bluetooth is off here
+                    catch (IllegalStateException ignore) {} // caught if bluetooth is off here
+                    catch (Exception ignore) {} //catch to avoid crash
                 }
 
                 public void onBatchScanResults(List<ScanResult> results) {
@@ -282,6 +283,8 @@ public class BluetoothMedic {
                 } catch (NullPointerException e) {
                     // Needed to stop a crash caused by internal NPE thrown by Android.  See issue #636
                     LogManager.e(TAG, "NullPointerException. Cannot run scan test.", e);
+                } catch (Exception e) {
+                    LogManager.e(TAG, "Unknown Exception. Cannot run scan test.", e);
                 }
             }
             else {
