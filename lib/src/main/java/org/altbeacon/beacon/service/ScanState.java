@@ -193,7 +193,7 @@ public class ScanState implements Serializable {
                 outputStream = mContext.openFileOutput(TEMP_STATUS_PRESERVATION_FILE_NAME, MODE_PRIVATE);
                 objectOutputStream = new ObjectOutputStream(outputStream);
                 objectOutputStream.writeObject(this);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 LogManager.e(TAG, "Error while saving scan status to file: ", e.getMessage());
             } finally {
                 if (null != outputStream) {
