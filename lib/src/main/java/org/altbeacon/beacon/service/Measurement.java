@@ -3,7 +3,9 @@ package org.altbeacon.beacon.service;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class Measurement implements Comparable<Measurement>, Parcelable {
+import java.io.Serializable;
+
+public class Measurement implements Comparable<Measurement>, Parcelable, Serializable {
     public Integer rssi;
     public long timestamp;
 
