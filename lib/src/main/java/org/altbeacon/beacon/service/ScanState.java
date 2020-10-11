@@ -146,8 +146,10 @@ public class ScanState implements Serializable {
                 scanState.mContext = context;
             } catch (FileNotFoundException fnfe) {
                 LogManager.w(TAG, "Serialized ScanState does not exist.  This may be normal on first run.");
-            }
-            catch (IOException | ClassNotFoundException | ClassCastException e) {
+            } catch(Error error) {
+                //This is most likely a OutOfMemoryError, but just need to catch them all here
+                scanState = null;
+            } catch (IOException | ClassNotFoundException | ClassCastException e) {
                 if (e instanceof InvalidClassException) {
                     LogManager.d(TAG, "Serialized ScanState has wrong class. Just ignoring saved state...");
                 }
@@ -172,7 +174,6 @@ public class ScanState implements Serializable {
             }
             if (scanState == null) {
                 scanState = new ScanState(context);
-
             }
             if (scanState.mExtraBeaconDataTracker == null) {
                 scanState.mExtraBeaconDataTracker = new ExtraDataBeaconTracker();
