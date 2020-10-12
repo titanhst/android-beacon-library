@@ -397,34 +397,39 @@ class ScanHelper {
         @WorkerThread
         @Override
         protected Void doInBackground(ScanHelper.ScanData... params) {
-            ScanHelper.ScanData scanData = params[0];
-            Beacon beacon = null;
+            try {
+                ScanHelper.ScanData scanData = params[0];
+                Beacon beacon = null;
 
-            for (BeaconParser parser : ScanHelper.this.mBeaconParsers) {
-                beacon = parser.fromScanData(scanData.scanRecord, scanData.rssi, scanData.device, scanData.timestampMs);
+                for (BeaconParser parser : ScanHelper.this.mBeaconParsers) {
+                    beacon = parser.fromScanData(scanData.scanRecord, scanData.rssi, scanData.device, scanData.timestampMs);
 
-                if (beacon != null) {
-                    break;
-                }
-            }
-            if (beacon != null) {
-                if (LogManager.isVerboseLoggingEnabled()) {
-                    LogManager.d(TAG, "Beacon packet detected for: "+beacon+" with rssi "+beacon.getRssi());
-                }
-                mDetectionTracker.recordDetection();
-                if (mCycledScanner != null && !mCycledScanner.getDistinctPacketsDetectedPerScan()) {
-                    if (!mDistinctPacketDetector.isPacketDistinct(scanData.device.getAddress(),
-                            scanData.scanRecord)) {
-                        LogManager.i(TAG, "Non-distinct packets detected in a single scan.  Restarting scans unecessary.");
-                        mCycledScanner.setDistinctPacketsDetectedPerScan(true);
+                    if (beacon != null) {
+                        break;
                     }
                 }
-                processBeaconFromScan(beacon);
-            } else {
-                if (mNonBeaconLeScanCallback != null) {
-                    mNonBeaconLeScanCallback.onNonBeaconLeScan(scanData.device, scanData.rssi, scanData.scanRecord);
+                if (beacon != null) {
+                    if (LogManager.isVerboseLoggingEnabled()) {
+                        LogManager.d(TAG, "Beacon packet detected for: " + beacon + " with rssi " + beacon.getRssi());
+                    }
+                    mDetectionTracker.recordDetection();
+                    if (mCycledScanner != null && !mCycledScanner.getDistinctPacketsDetectedPerScan()) {
+                        if (!mDistinctPacketDetector.isPacketDistinct(scanData.device.getAddress(),
+                                scanData.scanRecord)) {
+                            LogManager.i(TAG, "Non-distinct packets detected in a single scan.  Restarting scans unecessary.");
+                            mCycledScanner.setDistinctPacketsDetectedPerScan(true);
+                        }
+                    }
+                    processBeaconFromScan(beacon);
+                } else {
+                    if (mNonBeaconLeScanCallback != null) {
+                        mNonBeaconLeScanCallback.onNonBeaconLeScan(scanData.device, scanData.rssi, scanData.scanRecord);
+                    }
                 }
+            } catch (Error e) {
+                // Here to catch OutOfMemoryError
             }
+
             return null;
         }
 
